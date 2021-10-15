@@ -109,6 +109,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     SocketManager().chatID = '';
     P2PNotifier().removeListener(function);
     SocketManager().leaveChat(widget.chatObjectId);
+    //维护消息列表chat list
     DatabaseManager().selectChatListForID(widget.chatObjectId).then((chat) {
       print("chat:$chat");
       ChatList newChat = ChatList(
