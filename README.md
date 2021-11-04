@@ -1,4 +1,4 @@
-![](https://img-blog.csdnimg.cn/984539d5c0a14da58dfbc3b702b9b7a8.png)
+![](https://img-blog.csdnimg.cn/20211015185505683.png)
 
 # 1. 即时通讯简述
 
@@ -28,7 +28,6 @@ Socket.io不是WebSocket，它只是将WebSocket和轮询 （Polling）机制以
 
    例如，长链接心跳机制，客户端向服务器发送ping消息，服务器在成功接受客户端的ping消息后返回的pong消息就属于服务器的返回消息。其他常见的场景如社交软件中A用户给B用户发出了消息，服务器在收到A用户的消息后，给A客户端返回一条消息，供A客户端了解消息的发送状态，判断发送是否成功。大部分场景，服务器在接收到客户端主动发出的消息之后都需要返回一条消息。
 
-
 # 3. 客户端实现流程
 
 几个设计客户端即时通讯的重点。
@@ -37,7 +36,7 @@ Socket.io不是WebSocket，它只是将WebSocket和轮询 （Polling）机制以
 
 所谓心跳就是客户端发出ping消息，服务器成功收到后返回pong消息。当客户端一段时间内不在发送ping消息，视为客户端断开，服务器就会主动关闭socket链接。当客户端发送ping消息，服务器一段时间内没有返回pong消息，视为服务器断开，客户端就会启动重连机制。
 
-![启动流程](https://img-blog.csdnimg.cn/0e357a7088824daebf9f6cbf1b911ac1.png)
+![启动流程](https://img-blog.csdnimg.cn/20211015185505866.png)
 
 ## 3.2 重连机制
 
@@ -62,7 +61,7 @@ Socket.io不是WebSocket，它只是将WebSocket和轮询 （Polling）机制以
 
 ## 3.4 消息接收流程
 
-![](https://img-blog.csdnimg.cn/20f620c36cac4b0ea20ce33b7c928b58.png)
+![](https://img-blog.csdnimg.cn/2021101518550635.png)
 
 ## 3.5 其他相关
 
@@ -148,5 +147,8 @@ Socket.io不是WebSocket，它只是将WebSocket和轮询 （Polling）机制以
 
 demo写的比较简单，有问题可以评论。
 
-[项目github地址](https://github.com/ThinkerJack/flutter_im)。
+[项目github地址](https://github.com/ThinkerJack/flutter_im)
 
+![](https://img-blog.csdnimg.cn/c66cc07b674c424ba11ec6825e22a640.png)
+
+![](https://img-blog.csdnimg.cn/46f9ed15f914479ab130d47e9578e721.png)
