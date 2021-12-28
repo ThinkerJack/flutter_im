@@ -181,3 +181,9 @@ demo写的比较简单，有问题可以评论。
 ![](https://img-blog.csdnimg.cn/c66cc07b674c424ba11ec6825e22a640.png)
 
 ![](https://img-blog.csdnimg.cn/46f9ed15f914479ab130d47e9578e721.png)
+
+# 6 2.0
+
+2.0版本完善了demo。没有服务器地址，代码是不能运行的。
+
+不过完整的聊天功能都接入了。代码分层更加清晰。
