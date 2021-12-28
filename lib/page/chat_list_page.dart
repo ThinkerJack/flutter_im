@@ -1,14 +1,11 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter_im/model/chat.dart';
-import 'package:flutter_im/model/my_info.dart';
-import 'package:flutter_im/page/chat_detail_page.dart';
 import 'package:flutter_im/util/adapt.dart';
-import 'package:flutter_im/util/database_manager.dart';
-import 'package:flutter_im/util/socket_notifier.dart';
-import 'package:flutter_im/util/theme.dart';
+import 'package:pull_to_refresh/pull_to_refresh.dart';
+
+import '../util/theme.dart';
+import '../util/chat_item.dart';
+import '../vm/chat_list_vm.dart';
 
 /// @author wu chao
 /// @project flutter_im
@@ -21,180 +18,270 @@ class ChatListPage extends StatefulWidget {
 }
 
 class _ChatListPageState extends State<ChatListPage> {
-  late final function;
-  List<ChatList> chatList = [];
+
+  ChatListVM chatListVM = ChatListVM();
 
   @override
   void initState() {
     super.initState();
-    init();
-  }
-
-  init() {
-    getData();
-    function = () {
-      getData();
-    };
-    P2PNotifier().addListener(function);
-  }
-
-  getData() async {
-    chatList = await DatabaseManager().selectChatList();
-    setState(() {});
-  }
-
-  deleteChatList({chatObjectID}) async {
-    Map<String, dynamic> optHeader = {
-      'x-access-token': MyInfo.token,
-    };
-    Dio dio = Dio(BaseOptions(connectTimeout: 30000, headers: optHeader));
-    var response = await dio.post(
-        '',
-        data: {
-          "user_ids": [chatObjectID]
-        });
-    debugPrint(response.toString());
-    if (response.data["code"] == 1000) {
-      await DatabaseManager().deleteChatList(chatObjectID: chatObjectID);
-      chatList = await DatabaseManager().selectChatList();
+    chatListVM.init(function: () {
       setState(() {});
-    }
+    });
   }
 
   @override
   void dispose() {
-    P2PNotifier().removeListener(function);
-    print("dispose");
     super.dispose();
+    chatListVM.destruction();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("消息列表"),
-      ),
-      body: ListView(
+    return SmartRefresher(
+      enablePullDown: true,
+      enablePullUp: true,
+      header: WaterDropHeader(),
+      controller: chatListVM.refreshController,
+      onRefresh: chatListVM.onRefresh,
+      onLoading: chatListVM.onLoading,
+      child: ListView(
         children: [
-          if (chatList != [])
-            for (var chat in chatList)
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ChatDetailPage(
-                          chatObjectId: chat.chatObjectId,
-                          chatObjectImage: chat.image,
-                          chatObjectSex: chat.sex,
-                          chatObjectName: chat.name,
-                        ),
-                      )).then((value) {
-                    getData();
-                  });
-                },
-                child: Container(
-                  height: 150.px,
-                  child: ListView(
-                    key: UniqueKey(),
-                    scrollDirection: Axis.horizontal,
+          GestureDetector(
+            onTap: () async {
+              // NavigatorUtil.push("systemMessage");
+            },
+            child: Container(
+              width: 750.px,
+              height: 160.px,
+              padding: EdgeInsets.fromLTRB(40.px, 10.px, 20.px, 10.px),
+              decoration: BoxDecoration(
+                color: CustomTheme().primaryColor,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    height: 110.px,
+                    width: 110.px,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(90.px),
+                      color: Color.fromRGBO(126, 119, 244, 1),
+                    ),
+                    child: Icon(
+                      Icons.add_alert_rounded,
+                      color: Colors.white,
+                      size: 55.px,
+                    ),
+                  ),
+                  SizedBox(
+                    width: 50.px,
+                  ),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "通知",
+                        style: CustomTheme().bigTitleStyle,
+                      ),
+                      SizedBox(
+                        height: 15.px,
+                      ),
+                      Text(
+                        "暂无通知",
+                        style: CustomTheme().bigGrayTextStyle,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () async {
+              // NavigatorUtil.push("newFans");
+            },
+            child: Container(
+              width: 750.px,
+              height: 160.px,
+              padding: EdgeInsets.fromLTRB(40.px, 10.px, 20.px, 10.px),
+              decoration: BoxDecoration(
+                color: CustomTheme().primaryColor,
+              ),
+              child: Row(
+                children: [
+                  Stack(
+                    clipBehavior: Clip.none,
                     children: [
                       Container(
-                        width: Adapt.px(750),
+                        height: 110.px,
+                        width: 110.px,
                         decoration: BoxDecoration(
-                          border: Border(
-                            top: BorderSide(
-                              width: 3.px, //宽度
-                              color: CustomTheme().backgroundColor, //边框颜色
-                            ),
-                          ),
-                          color: CustomTheme().primaryColor,
+                          borderRadius: BorderRadius.circular(90.px),
+                          color: Color.fromRGBO(101, 137, 242, 1),
                         ),
-                        padding:
-                            EdgeInsets.fromLTRB(20.px, 20.px, 20.px, 20.px),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 100.px,
-                              height: 100.px,
-                              decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(90.px)),
-                              clipBehavior: Clip.antiAlias,
-                              child: Image.network(chat.image),
-                            ),
-                            SizedBox(width: 10.px),
-                            Container(
-                              width: 450.px,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    chat.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: CustomTheme().titleStyle,
-                                  ),
-                                  Text(
-                                    chat.lastMsgText,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: CustomTheme().textStyle,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Padding(
-                              padding: EdgeInsets.only(top: 10.px),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                      "${chat.lastMsgAt.year}/${chat.lastMsgAt.month}/${chat.lastMsgAt.day}"),
-                                  SizedBox(
-                                    height: 10.px,
-                                  ),
-                                  Visibility(
-                                    visible: chat.unreadCount != 0,
-                                    child: Container(
-                                      width: 40.px,
-                                      height: 40.px,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(90),
-                                        color: Colors.red,
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        chat.unreadCount.toString(),
-                                        style: TextStyle(
-                                            color: CustomTheme().primaryColor,
-                                            fontSize: 25.px),
-                                      ),
-                                    ),
-                                  )
-                                ],
-                              ),
-                            )
-                          ],
+                        child: Icon(
+                          Icons.attribution,
+                          color: Colors.white,
+                          size: 55.px,
                         ),
                       ),
-                      GestureDetector(
-                        onTap: () async {
-                          deleteChatList(chatObjectID: chat.chatObjectId);
-                        },
-                        child: Container(
-                          width: 140.px,
-                          alignment: Alignment.center,
-                          color: Colors.red,
-                          child: Text(
-                            "删除",
-                            style: TextStyle(color: CustomTheme().primaryColor),
+                      Positioned(
+                        right: -5.px,
+                        top: -5.px,
+                        child: Visibility(
+                          visible: chatListVM.followRequest != null &&
+                              chatListVM.followRequest!["count"] != 0,
+                          // visible: true,
+                          child: Container(
+                            width: 40.px,
+                            height: 40.px,
+                            decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(90),
+                                color: CustomTheme().alertColor,
+                                border: Border.all(
+                                    color: Colors.white, width: 3.px)),
+                            alignment: Alignment.center,
+                            child: Text(
+                              "${chatListVM.followRequest != null ? chatListVM.followRequest!["count"].toString() : "0"}",
+                              style: TextStyle(
+                                  color: CustomTheme().primaryColor,
+                                  fontSize: 23.px),
+                            ),
                           ),
                         ),
                       )
                     ],
                   ),
-                ),
-              )
+                  SizedBox(
+                    width: 50.px,
+                  ),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "关注",
+                        style: CustomTheme().bigTitleStyle,
+                      ),
+                      SizedBox(
+                        height: 15.px,
+                      ),
+                      Text(
+                        "${(chatListVM.followRequest != null && chatListVM.followRequest!["count"] != 0) ? "有${chatListVM.followRequest!["count"]}位朋友关注了你" : "暂无通知"}",
+                        style: CustomTheme().bigGrayTextStyle,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () async {
+              // NavigatorUtil.push("friendRequest");
+            },
+            child: Container(
+              width: 750.px,
+              height: 160.px,
+              padding: EdgeInsets.fromLTRB(40.px, 10.px, 20.px, 10.px),
+              decoration: BoxDecoration(
+                color: CustomTheme().primaryColor,
+              ),
+              child: Row(
+                children: [
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        height: 110.px,
+                        width: 110.px,
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(90.px),
+                            color: Color.fromRGBO(244, 133, 173, 1)),
+                        child: Icon(
+                          Icons.account_circle_outlined,
+                          color: Colors.white,
+                          size: 55.px,
+                        ),
+                      ),
+                      Positioned(
+                        right: -5.px,
+                        top: -5.px,
+                        child: Visibility(
+                          visible: chatListVM.friendRequest != null &&
+                              chatListVM.friendRequest?.updateCount != 0,
+                          // visible: true,
+                          child: Container(
+                            width: 40.px,
+                            height: 40.px,
+                            decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(90),
+                                color: CustomTheme().alertColor,
+                                border: Border.all(
+                                    color: Colors.white, width: 3.px)),
+                            alignment: Alignment.center,
+                            child: Text(
+                              "${chatListVM.friendRequest?.updateCount ?? ""}",
+                              style: TextStyle(
+                                  color: CustomTheme().primaryColor,
+                                  fontSize: 23.px),
+                            ),
+                          ),
+                        ),
+                      )
+                    ],
+                  ),
+                  SizedBox(
+                    width: 50.px,
+                  ),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "好友请求",
+                        style: CustomTheme().bigTitleStyle,
+                      ),
+                      SizedBox(
+                        height: 15.px,
+                      ),
+                      Text(
+                        "${(chatListVM.friendRequest != null && chatListVM.friendRequest!.updateCount != 0) ? "有${chatListVM.friendRequest!.updateCount}位陌生人请求添加你为好友" : "暂无通知"}",
+                        style: CustomTheme().bigGrayTextStyle,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (chatListVM.chatList != [])
+            for (var chat in chatListVM.chatList)
+              ChatItem(
+                tap: () {
+                  // NavigatorUtil.push(
+                  //   "chatDetailPage",
+                  //   arguments: {
+                  //     "userBase": UserBase(
+                  //         id: chat.chatObjectId,
+                  //         sex: int.parse(chat.sex),
+                  //         name: chat.name,
+                  //         image: chat.image)
+                  //   },
+                  // ).then((value) {
+                  //   chatListVM.getData();
+                  // });
+                },
+                name: chat.name,
+                image: chat.image,
+                lastMsgAt: chat.lastMsgAt,
+                lastMsgText: chat.lastMsgText,
+                unreadCount: chat.unreadCount,
+                sex:chat.sex,
+                onDelete: () {
+                  chatListVM.deleteChatList(chatObjectID: chat.chatObjectId);
+                },
+              ),
         ],
       ),
     );

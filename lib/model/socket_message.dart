@@ -17,15 +17,15 @@ class SocketMessage {
   });
 
   String type;
-  int? code;
+  dynamic? code;
   dynamic payload;
-  int msgTime;
+  dynamic msgTime;
 
   factory SocketMessage.fromJson(Map<String, dynamic> json) => SocketMessage(
         type: json["type"],
-        code: json["code"],
-        payload: json["payload"],
-        msgTime: json["msg_time"],
+        code: json["code"] != null ? json["code"] : "",
+        payload: json["payload"] != null ? json["payload"] : "",
+        msgTime: json["msg_time"] != null ? json["msg_time"] : "",
       );
 
   Map<String, dynamic> toJson() => {

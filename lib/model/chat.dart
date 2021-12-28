@@ -5,7 +5,7 @@ import 'dart:convert';
 
 import 'package:uuid/uuid.dart';
 
-import 'my_info.dart';
+import '../util/database_manager.dart';
 
 List<ChatList> chatListFromJson(List chatList) =>
     List<ChatList>.from(chatList.map((x) => ChatList.fromJson(x)));
@@ -40,10 +40,12 @@ class ChatList {
         unreadCount: json["unread_count"],
         lastMsgText: json["last_msg_text"],
         lastMsgAt: DateTime.parse(json["last_msg_at"]),
-        chatObjectId: json["ui"]["id"],
-        name: json["ui"]["name"],
-        sex: json["ui"]["sex"].toString(),
-        image: json["ui"]["image"],
+        chatObjectId: json["ui"] == null ? json["from_id"] : json["ui"]["id"],
+        name: json["ui"] == null ? "脏数据" : json["ui"]["name"],
+        sex: json["ui"] == null ? "1" : json["ui"]["sex"].toString(),
+        image: json["ui"] == null || json["ui"]["image"] == null
+            ? "http://werewolf-image.xiaobanhui.com/0ac5e8f0-ab05-11ea-9040-4fca266cc85f?imageslim"
+            : json["ui"]["image"],
       );
 
   factory ChatList.fromSqlData(Map<String, dynamic> sqlData) => ChatList(
@@ -64,7 +66,7 @@ class ChatList {
         lastMsgAt: DateTime.parse(socketJson["created_at"]),
         chatObjectId: socketJson["from_id"],
         name: socketJson["cov_data"]["data"]["attrs"]["USER_NAME"],
-        sex: socketJson["cov_data"]["data"]["attrs"]["USER_SEX"],
+        sex: socketJson["cov_data"]["data"]["attrs"]["USER_SEX"].toString(),
         image: socketJson["cov_data"]["data"]["attrs"]["USER_ICON"],
       );
 
@@ -114,23 +116,24 @@ class ChatDetail {
   num type;
   String chatObjectId;
 
-  factory ChatDetail.fromGCDSSocketJson(Map<String, dynamic> socketJson) =>
-      ChatDetail(
-        chatID: socketJson["_id"],
-        fromID: socketJson["from_id"],
-        toID: socketJson["to_id"],
-        content: getContent(socketJson),
-        createdAt: DateTime.parse(socketJson["created_at"]),
-        image: socketJson["cov_data"]["data"]["attrs"]["USER_ICON"],
-        name: socketJson["cov_data"]["data"]["attrs"]["USER_NAME"],
-        sex: socketJson["cov_data"]["data"]["attrs"]["USER_SEX"].toString(),
-        status: "done",
-        type: socketJson["cov_data"]["mType"],
-        chatObjectId:
-            socketJson["cov_data"]["data"]["attrs"]["USER_ID"] != MyInfo.id
-                ? socketJson["cov_data"]["data"]["attrs"]["USER_ID"]
-                : socketJson["to_id"],
-      );
+  factory ChatDetail.fromGCDSSocketJson(Map<String, dynamic> socketJson) {
+    return ChatDetail(
+      chatID: socketJson["_id"],
+      fromID: socketJson["from_id"],
+      toID: socketJson["to_id"],
+      content: getContent(socketJson),
+      createdAt: DateTime.parse(socketJson["created_at"]),
+      image: socketJson["cov_data"]["data"]["attrs"]["USER_ICON"],
+      name: socketJson["cov_data"]["data"]["attrs"]["USER_NAME"],
+      sex: socketJson["cov_data"]["data"]["attrs"]["USER_SEX"].toString(),
+      status: "done",
+      type: socketJson["cov_data"]["mType"],
+      chatObjectId: socketJson["cov_data"]["data"]["attrs"]["USER_ID"] !=
+              DatabaseManager().id
+          ? socketJson["cov_data"]["data"]["attrs"]["USER_ID"]
+          : socketJson["to_id"],
+    );
+  }
 
   factory ChatDetail.fromP2PSocketJson(Map<String, dynamic> socketJson) =>
       ChatDetail(
@@ -144,10 +147,10 @@ class ChatDetail {
         sex: socketJson["cov_data"]["data"]["attrs"]["USER_SEX"].toString(),
         status: "done",
         type: socketJson["cov_data"]["mType"],
-        chatObjectId:
-            socketJson["cov_data"]["data"]["attrs"]["USER_ID"] != MyInfo.id
-                ? socketJson["cov_data"]["data"]["attrs"]["USER_ID"]
-                : socketJson["to_id"],
+        chatObjectId: socketJson["cov_data"]["data"]["attrs"]["USER_ID"] !=
+                DatabaseManager().id
+            ? socketJson["cov_data"]["data"]["attrs"]["USER_ID"]
+            : socketJson["to_id"],
       );
 
   factory ChatDetail.fromSqlData(Map<String, dynamic> sqlData) => ChatDetail(
@@ -185,4 +188,22 @@ class ChatDetail {
         "type": type,
         "status": status,
       };
+}
+
+class ManyChatDetail {
+  String content;
+  String image;
+  DateTime time;
+  String name;
+  String id;
+  bool flag;
+
+  ManyChatDetail(
+      {required this.content,
+        required this.image,
+        required this.time,
+        required this.name,
+        required this.flag,
+        required this.id
+      });
 }

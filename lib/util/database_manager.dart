@@ -1,9 +1,11 @@
-import 'package:dio/dio.dart';
+    import 'dart:convert';
+
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_im/model/chat.dart';
-import 'package:flutter_im/model/my_info.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+
+import '../model/chat.dart';
+
 
 /// @author wu chao
 /// @project flutter_im
@@ -17,11 +19,17 @@ class DatabaseManager {
 
   factory DatabaseManager() => _instance;
 
+  String id = '';
 
+  String token = '';
 
   open() async {
+    // SpUtil sp = await SpUtil.getInstance();
+    // this.token = Global.accessToken;
+    // this.id =
+    //     User.fromJson(jsonDecode(sp.getString(SharedPreferencesKeys.user)!)).id;
     var databasesPath = await getDatabasesPath();
-    String path = join(databasesPath, 'im.db');
+    String path = join(databasesPath, "im$id.db");
     database = await openDatabase(path, version: 1,
         onCreate: (Database db, int version) async {
       await db.execute('''
@@ -126,28 +134,39 @@ class DatabaseManager {
   }
 
   Future initChatList() async {
-    DatabaseManager().open();
-    Map<String, dynamic> optHeader = {
-      'x-access-token': MyInfo.token,
-    };
-    Dio dio = Dio(BaseOptions(connectTimeout: 30000, headers: optHeader));
+    await DatabaseManager().open();
     int skip = 0;
     int total;
     int limit = 30;
-    var response = await dio.get(
-        '');
-    if (response.data["code"] == 1000) {
-      debugPrint("get success");
-      if (response.data["data"]["total"] == 0) return;
-      total = response.data["data"]["total"];
-      await DatabaseManager().deleteChatList();
-      for (; skip < total; skip += limit) {
-        Dio dio = Dio(BaseOptions(connectTimeout: 30000, headers: optHeader));
-        var response = await dio.get(
-            '');
-        await DatabaseManager()
-            .insertChatList(chatListFromJson(response.data["data"]["datas"]));
+    var data;
+    try {
+      // data = await HttpUtils.get(API_P2P_LIST,
+      //     params: {
+      //       "skip": skip,
+      //       "limit": limit,
+      //     });
+    } catch (e) {
+      print("初始化消息列表总数失败");
+      return;
+    }
+    debugPrint("get success");
+    if (data == null || data["data"]["total"] == 0) return;
+    total = data["data"]["total"];
+    await DatabaseManager().deleteChatList();
+    for (; skip < total; skip += limit) {
+      var data;
+      try {
+        // data = await HttpUtils.get(API_P2P_LIST,
+        //     params: {
+        //       "skip": skip,
+        //       "limit": limit,
+        //     });
+      } catch (e) {
+        print("初始化消息列表请求失败");
+        return;
       }
+      await DatabaseManager()
+          .insertChatList(chatListFromJson(data["data"]["datas"]));
     }
   }
 }

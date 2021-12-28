@@ -14,16 +14,25 @@ class CustomTheme {
 
   final Color primaryColor = Colors.white;
   final Color backgroundColor = Color(0xFFF2F2F2);
-  final Color focusColor = Colors.black;
-  final TextStyle titleStyle = TextStyle(
+  final Color alertColor = Colors.red;
+  final TextStyle tabStyle = TextStyle(
       color: Colors.black, fontSize: 40.px, fontWeight: FontWeight.bold);
-  final TextStyle subTitleStyle =
+  final TextStyle bigTabStyle = TextStyle(
+      color: Colors.black, fontSize: 55.px, fontWeight: FontWeight.bold);
+  final TextStyle titleStyle = TextStyle(color: Colors.black, fontSize: 30.px);
+  final TextStyle bigTitleStyle =
       TextStyle(color: Colors.black, fontSize: 40.px);
   final TextStyle textStyle = TextStyle(color: Colors.black, fontSize: 30.px);
-  final TextStyle boldTextStyle = TextStyle(color: Colors.black, fontSize: 30.px,fontWeight: FontWeight.bold);
-  final TextStyle secondTextStyle = TextStyle(
-      color: Colors.black, fontSize: 24.px, fontWeight: FontWeight.bold);
-
+  final TextStyle secondTextStyle =
+      TextStyle(color: Colors.black, fontSize: 24.px);
+  final TextStyle grayTextStyle = TextStyle(
+    color: Color.fromRGBO(188, 191, 191, 1),
+    fontSize: 25.px,
+  );
+  final TextStyle bigGrayTextStyle = TextStyle(
+    color: Color.fromRGBO(188, 191, 191, 1),
+    fontSize: 30.px,
+  );
   // static CustomTheme of(BuildContext context) {
   //   final CustomTheme? result =
   //       context.dependOnInheritedWidgetOfExactType<CustomTheme>();

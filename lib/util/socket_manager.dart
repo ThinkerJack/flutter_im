@@ -1,20 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_im/model/chat.dart';
-import 'package:flutter_im/model/my_info.dart';
 import 'package:flutter_im/model/socket_message.dart';
-import 'package:flutter_im/util/database_manager.dart';
 import 'package:flutter_im/util/socket_notifier.dart';
-
 /// @author wu chao
 /// @project flutter_im
 /// @date 2021/8/14
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:socket_io_client/socket_io_client.dart';
 import 'package:uuid/uuid.dart';
+
+import '../model/chat.dart';
+import 'database_manager.dart';
 
 const CONNECT_INFO = "connect_info";
 const ENTER_SERVER = "enter_server";
@@ -47,30 +45,37 @@ class SocketManager {
 
   String chatID = '';
 
-  getSocketAddress() async {
-    Map<String, dynamic> optHeader = {
-      'token': MyInfo.token,
-    };
-    Dio dio = Dio(BaseOptions(connectTimeout: 30000, headers: optHeader));
-    var response = await dio.post('');
-    debugPrint(response.toString());
-    if (response.data["code"] != 1000) {
-      debugPrint("获取地址失败");
-      return;
+  Future getSocketAddress() async {
+    var data;
+    try {
+      // data = await HttpUtils.get(API_SERVER_GET,
+      //      params: {"type": "lobby"});
+    } catch (e) {
+      print("获取socket地址失败");
+      print("e$e");
+      return null;
     }
-    socketUrl = response.data["data"]["server"];
+    if (data == null || data["code"] != 1000) {
+      debugPrint("获取socket地址失败");
+      return null;
+    }
+    socketUrl = data["data"]["server"];
+    print("socketUrl$socketUrl");
+    openSocket();
   }
 
   openSocket() {
-    //创建socket io链接对象
-    socket = IO.io(
-        socketUrl,
-        OptionBuilder()
-            .setTransports(['websocket']) // for Flutter or Dart VM
-            .setExtraHeaders({'x-access-token': MyInfo.token})
-            .setPath("/connector")
-            .setQuery({"room_id": "", "room_type": "lobby"}) // optional
-            .build());
+    print("打开socket链接");
+    socket = IO
+        .io(
+            socketUrl,
+            OptionBuilder()
+                .setTransports(['websocket']) // for Flutter or Dart VM
+                .setExtraHeaders({'x-access-token': DatabaseManager().token})
+                .setPath("/connector")
+                .setQuery({"room_id": "", "room_type": "lobby"}) // optional
+                .build())
+        .connect();
     socket.onDisconnect((data) {
       debugPrint("onDisconnect");
       debugPrint(data.toString());
@@ -88,8 +93,6 @@ class SocketManager {
       debugPrint(data.toString());
     });
     socket.on('message', (data) {
-      debugPrint("message");
-      debugPrint(data.toString());
       SocketMessage socketMessage = socketMessageFromJson(data);
       switch (socketMessage.type) {
         case CONNECT_INFO:
@@ -121,7 +124,6 @@ class SocketManager {
           DatabaseManager()
               .selectChatListForID(socketMessage.payload["from_id"])
               .then((chat) {
-            print("chat:$chat");
             if (chat.length == 0) {
               DatabaseManager().insertChatList([newChat]);
             }
@@ -142,10 +144,9 @@ class SocketManager {
       }
     });
     socket.on('response', (data) {
-      debugPrint("response");
-      debugPrint(data);
       SocketMessage socketMessage = socketMessageFromJson(data);
       if (socketMessage.type == PONG && socketMessage.code == 1000) {
+        // print("pong");
         pingWaitFlag = false;
         pingWaitTimer!.cancel();
         pingWaitTime = 0;
@@ -169,7 +170,7 @@ class SocketManager {
   }
 
   ping() {
-    debugPrint("ping");
+    // debugPrint("ping");
     String pingData =
         '{"type":"ping","payload":{"front":true},"msg_id":${DateTime.now().millisecondsSinceEpoch}}';
     socket.emit("message", pingData);
@@ -177,14 +178,13 @@ class SocketManager {
     pingWaitTime = 0;
     pingWaitTimer = Timer.periodic(Duration(seconds: 1), (data) {
       pingWaitTime++;
-      print(data.hashCode);
       if (pingWaitTime % 10 == 0) debugPrint(pingWaitTime.toString());
     });
   }
 
   enter() {
     String enterData =
-        '{"type":"enter","payload":{"extra":{"lg":"zh","pt":"android","sv":77,"tz":"+08:00","v":202108100},"from":"","password":"","room_id":"","token":"${MyInfo.token}","type":"lobby","user":{"avatar":"https:\\/\\/werewolf-image.xiaobanhui.com\\/default\\/female_wolf.png?imageView2%2F0%2Fw%2F1920%2Fh%2F1080%2Fq%2F75%7Cimageslim","experience":0,"id":"${MyInfo.id}","level":0,"name":"519237","sex":1}},"msg_id":"${DateTime.now().millisecondsSinceEpoch}"}';
+        '{"type":"enter","payload":{"extra":{"lg":"zh","pt":"android","sv":77,"tz":"+08:00","v":202108100},"from":"","password":"","room_id":"","token":"${DatabaseManager().token}","type":"lobby","user":{"avatar":"https:\\/\\/werewolf-image.xiaobanhui.com\\/default\\/female_wolf.png?imageView2%2F0%2Fw%2F1920%2Fh%2F1080%2Fq%2F75%7Cimageslim","experience":0,"id":"${DatabaseManager().id}","level":0,"name":"519237","sex":1}},"msg_id":"${DateTime.now().millisecondsSinceEpoch}"}';
     socket.emit("message", enterData);
   }
 
@@ -196,7 +196,6 @@ class SocketManager {
     if (formID != '') return;
     socket.emit("message",
         '{"msg_id":"${Uuid().v1().replaceAll("-", "")}","payload":{"cType":1,"tid":"$chatObjectId","limit":30},"type":"cs_gcds"}');
-    //,"form_id":"611a2d21c71e7621997d5594"
   }
 
   inChat(String chatObjectId) {

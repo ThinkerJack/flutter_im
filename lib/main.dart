@@ -1,6 +1,6 @@
 
 import 'package:flutter/material.dart';
-import 'package:flutter_im/page/socket_init.dart';
+import 'package:flutter_im/page/chat_list_page.dart';
 import 'package:flutter_im/util/adapt.dart';
 
 
@@ -16,9 +16,7 @@ class MyApp extends StatelessWidget {
     const title = 'WebSocket Demo';
     return const MaterialApp(
       title: title,
-      home: MyHomePage(
-        title: title,
-      ),
+      home: ChatListPage(),
     );
   }
 }

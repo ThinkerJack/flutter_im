@@ -1,278 +1,307 @@
-import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_im/model/chat.dart';
-import 'package:flutter_im/model/my_info.dart';
 import 'package:flutter_im/util/adapt.dart';
-import 'package:flutter_im/util/database_manager.dart';
-import 'package:flutter_im/util/socket_manager.dart';
-import 'package:flutter_im/util/socket_notifier.dart';
-import 'package:uuid/uuid.dart';
+import 'package:pull_to_refresh/pull_to_refresh.dart';
+
+import '../model/user_base.dart';
+import '../util/UI.dart';
+import '../util/theme.dart';
+import '../vm/chat_detail_vm.dart';
 
 /// @author wu chao
 /// @project flutter_im
 /// @date 2021/8/16
 class ChatDetailPage extends StatefulWidget {
-  ChatDetailPage({
-    Key? key,
-    required this.chatObjectId,
-    required this.chatObjectSex,
-    required this.chatObjectImage,
-    required this.chatObjectName,
-  }) : super(key: key);
-  String chatObjectId;
-  String chatObjectImage;
-  String chatObjectName;
-  String chatObjectSex;
+  ChatDetailPage({Key? key, required this.userBase}) : super(key: key);
+  UserBase userBase;
 
   @override
   _ChatDetailPageState createState() => _ChatDetailPageState();
 }
 
 class _ChatDetailPageState extends State<ChatDetailPage> {
-  late Timer timer;
-  List<ChatDetail> chatDetail = [];
-  late final function;
-  TextEditingController textEditingController = TextEditingController();
-  ScrollController scrollController = ScrollController();
+  ChatDetailVM chatDetailVM = ChatDetailVM();
 
   @override
   void initState() {
     super.initState();
-    init();
-  }
-
-  init() {
-    getData();
-    SocketManager().inChat(widget.chatObjectId);
-    SocketManager().chatID = widget.chatObjectId;
-    timer = Timer.periodic(Duration(seconds: 40), (timer) {
-      SocketManager().inChat(widget.chatObjectId);
-    });
-    DatabaseManager().updateChatListUnread(widget.chatObjectId);
-    SocketManager().getChatDetail(widget.chatObjectId);
-    function = () {
-      getData();
-    };
-    P2PNotifier().addListener(function);
-  }
-
-  getData() async {
-    chatDetail = await DatabaseManager().selectChatDetail(widget.chatObjectId);
-    print(chatDetail);
-    setState(() {});
-  }
-
-  send() {
-    if (textEditingController.text != "") {
-      String content = textEditingController.text;
-      textEditingController.text = '';
-      String msgID = Uuid().v1().replaceAll("-", "");
-      ChatDetail chatDetail = ChatDetail(
-        chatID: msgID,
-        fromID: MyInfo.id,
-        toID: widget.chatObjectId,
-        content: content,
-        createdAt: DateTime.now(),
-        image: MyInfo.image,
-        name: MyInfo.name,
-        sex: MyInfo.sex,
-        status: "wait",
-        type: -1,
-        chatObjectId: widget.chatObjectId,
-      );
-      DatabaseManager().insertChatDetail([chatDetail]).then((value) {
-        getData();
-        String talkData = '''{"type":"cs_cp2p",
-            "payload":{
-            "cd":{
-            "data":{
-            "attrs":{
-            "MSG_TYPE":"SINGLE",
-            "USER_SEX":"${MyInfo.sex}",
-            "USER_ID":"${MyInfo.id}",
-            "USER_NAME":"${MyInfo.name}",
-            "USER_ICON":"${MyInfo.image}",
-            "CHAT_TIME":"${DateTime.now().millisecondsSinceEpoch}"},
-            "text":"$content"},"mType":-1},
-            "tid":"${widget.chatObjectId}"},
-            "msg_id":"$msgID"}''';
-        SocketManager().talk(talkData);
-      });
-    }
+    chatDetailVM.init(
+        vsync: this,
+        function: () {
+          setState(() {});
+        },
+        context: context,
+        userBase: widget.userBase);
   }
 
   @override
   void dispose() {
-    timer.cancel();
-    SocketManager().chatID = '';
-    P2PNotifier().removeListener(function);
-    SocketManager().leaveChat(widget.chatObjectId);
-    //维护消息列表chat list
-    DatabaseManager().selectChatListForID(widget.chatObjectId).then((chat) {
-      print("chat:$chat");
-      ChatList newChat = ChatList(
-          covId: Uuid().v1().replaceAll("-", ""),
-          lastMsgText:
-              chatDetail[0].type == -1 ? chatDetail[0].content : "[图片]",
-          lastMsgAt: DateTime.now(),
-          unreadCount: 0,
-          image: widget.chatObjectImage,
-          name: widget.chatObjectName,
-          sex: widget.chatObjectSex,
-          chatObjectId: widget.chatObjectId);
-      if (chat.length == 0) {
-        DatabaseManager().insertChatList([newChat]);
-      }
-      if (chat.length != 0) {
-        DatabaseManager().updateChatList(newChat);
-      }
-      P2PNotifier().notice();
-    });
+    chatDetailVM.destruction();
     super.dispose();
   }
+
+
 
   @override
   Widget build(BuildContext context) {
     print("build");
     return Scaffold(
+      backgroundColor: Color.fromRGBO(246, 249, 249, 1),
       appBar: AppBar(
-        title: Text("聊天"),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              reverse: true,
-              controller: scrollController,
-              children: [
-                SizedBox(
-                  height: 30.px,
-                ),
-                for (int i = 0; i < chatDetail.length - 1; i++)
-                  (chatDetail[i].fromID == chatDetail[i].chatObjectId)
-                      ? Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                      borderRadius:
-                                          BorderRadius.circular(90.px)),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: Image.network(
-                                    chatDetail[i].image,
-                                    width: 80.px,
-                                    height: 80.px,
-                                  ),
-                                ),
-                                SizedBox(width: 20.px),
-                                if (chatDetail[i].type == -2)
-                                  Image.network(
-                                    chatDetail[i].content,
-                                    width: 300.px,
-                                  ),
-                                if (chatDetail[i].type == -1)
-                                  Container(
-                                    padding: EdgeInsets.fromLTRB(
-                                        20.px, 20.px, 20.px, 20.px),
-                                    decoration: BoxDecoration(
-                                      borderRadius:
-                                          BorderRadius.circular(20.px),
-                                      color: Colors.indigoAccent,
-                                    ),
-                                    child: Text(
-                                      "${chatDetail[i].content}:${chatDetail[i].status}",
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            SizedBox(
-                              height: 30.px,
-                            )
-                          ],
-                        )
-                      : Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                if (chatDetail[i].type == -2)
-                                  Image.network(
-                                    chatDetail[i].content,
-                                    width: 300.px,
-                                  ),
-                                if (chatDetail[i].type == -1)
-                                  Container(
-                                    padding: EdgeInsets.fromLTRB(
-                                        20.px, 20.px, 20.px, 20.px),
-                                    decoration: BoxDecoration(
-                                      borderRadius:
-                                          BorderRadius.circular(20.px),
-                                      color: Colors.white,
-                                    ),
-                                    child: Text(
-                                      "${chatDetail[i].content}:${chatDetail[i].status}",
-                                    ),
-                                  ),
-                                SizedBox(width: 20.px),
-                                Container(
-                                  decoration: BoxDecoration(
-                                      borderRadius:
-                                          BorderRadius.circular(90.px)),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: Image.network(
-                                    chatDetail[i].image,
-                                    width: 80.px,
-                                    height: 80.px,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(
-                              height: 30.px,
-                            )
-                          ],
-                        ),
-              ],
-            ),
+          iconTheme: IconThemeData(
+            size: 30.px,
           ),
-          Container(
-            width: 750.px,
-            height: 100.px,
-            padding: EdgeInsets.fromLTRB(20.px, 20.px, 20.px, 20.px),
-            color: Colors.black12,
-            child: Row(
-              children: [
-                Expanded(
-                    child: Container(
-                  height: 100.px,
-                  color: Colors.white,
-                  child: TextField(
-                    controller: textEditingController,
-                    scrollPadding: EdgeInsets.zero,
-                    decoration: InputDecoration(
-                        contentPadding: EdgeInsets.zero,
-                        isDense: true,
-                        border: InputBorder.none),
-                  ),
-                )),
-                SizedBox(
-                  width: 30.px,
+          title: Text(
+            widget.userBase.name,
+            style: CustomTheme().titleStyle,
+          ),
+          backgroundColor:Colors.white,
+          elevation: 0,
+          actions: [
+            UnconstrainedBox(
+              child: Container(
+                width: 130.px,
+                height: 70.px,
+                margin: EdgeInsets.only(right: 40.px),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(60.px),
+                  color: Color.fromRGBO(233, 138, 155, 1),
                 ),
-                GestureDetector(
-                  child: Icon(Icons.send),
-                  onTap: () {
-                    send();
-                  },
+                alignment: Alignment.center,
+                child: Text(
+                  "关注",
+                  style: TextStyle(color: Colors.white, fontSize: 25.px),
                 ),
-              ],
+              ),
             ),
-          )
-        ],
+          ]),
+      body: GestureDetector(
+        onTap: () {
+          FocusScopeNode currentFocus = FocusScope.of(context);
+          if (!currentFocus.hasPrimaryFocus &&
+              currentFocus.focusedChild != null) {
+            FocusManager.instance.primaryFocus!.unfocus();
+          }
+        },
+        child: Column(
+          children: [
+            Expanded(
+              child: SmartRefresher(
+                enablePullDown: false,
+                enablePullUp: true,
+                header: WaterDropHeader(),
+                controller: chatDetailVM.refreshController,
+                // onRefresh: _onRefresh,
+                onLoading: chatDetailVM.onLoading,
+                child: ListView(
+                  reverse: true,
+                  controller: chatDetailVM.scrollController,
+                  children: [
+                    SizedBox(
+                      height: 30.px,
+                    ),
+                    for (int i = 0;
+                        i <= chatDetailVM.chatDetail.length - 1;
+                        i++)
+                      Column(
+                        children: [
+                          chatDetailVM.getDate(i),
+                          (chatDetailVM.chatDetail[i].fromID ==
+                                  chatDetailVM.chatDetail[i].chatObjectId)
+                              ? Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.start,
+                                      children: [
+                                        SizedBox(
+                                          width: 30.px,
+                                        ),
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(90.px),
+                                          ),
+                                          clipBehavior: Clip.antiAlias,
+                                          child: Image.network(
+                                            chatDetailVM.chatDetail[i].image,
+                                            width: 80.px,
+                                            height: 80.px,
+                                          ),
+                                        ),
+                                        SizedBox(width: 20.px),
+                                  if (chatDetailVM.chatDetail[i].type ==
+                                            -2)
+                                          Image.network(
+                                            chatDetailVM.chatDetail[i].content,
+                                            width: 300.px,
+                                          ),
+                                  if (chatDetailVM.chatDetail[i].type ==
+                                            -1)
+                                          Container(
+                                            constraints: BoxConstraints(
+                                              maxWidth: 560.px,
+                                            ),
+                                            padding: EdgeInsets.fromLTRB(
+                                                20.px, 20.px, 20.px, 20.px),
+                                            decoration: BoxDecoration(
+                                              borderRadius: BorderRadius.only(
+                                                topRight:
+                                                    Radius.circular(90.px),
+                                                bottomRight:
+                                                    Radius.circular(90.px),
+                                                bottomLeft:
+                                                    Radius.circular(90.px),
+                                              ),
+                                              color: Colors.white,
+                                            ),
+                                            child: Text(
+                                              "${chatDetailVM.chatDetail[i].content}",
+                                              style: TextStyle(
+                                                  color: Colors.black,
+                                                  fontSize: 30.px),
+                                            ),
+                                          ),
+                                        // Text(
+                                        //   "${chatDetail[i].status}",
+                                        //   style: TextStyle(color: Colors.black),
+                                        // ),
+                                      ],
+                                    ),
+                                    SizedBox(
+                                      height: 40.px,
+                                    )
+                                  ],
+                                )
+                              : Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        // Text(
+                                        //   "${chatDetail[i].status}",
+                                        //   style: TextStyle(color: Colors.black),
+                                        // ),
+                                        if (chatDetailVM.chatDetail[i].type ==
+                                            -2)
+                                          Image.network(
+                                            chatDetailVM.chatDetail[i].content,
+                                            width: 300.px,
+                                          ),
+                                        if (chatDetailVM.chatDetail[i].type ==
+                                            -1)
+                                          Container(
+                                            constraints: BoxConstraints(
+                                              maxWidth: 560.px,
+                                            ),
+                                            padding: EdgeInsets.fromLTRB(
+                                                20.px, 20.px, 20.px, 20.px),
+                                            decoration: BoxDecoration(
+                                              borderRadius: BorderRadius.only(
+                                                topLeft: Radius.circular(90.px),
+                                                bottomRight:
+                                                    Radius.circular(90.px),
+                                                bottomLeft:
+                                                    Radius.circular(90.px),
+                                              ),
+                                              color: Color.fromRGBO(
+                                                  179, 153, 243, 1),
+                                            ),
+                                            child: Text(
+                                              "${chatDetailVM.chatDetail[i].content}",
+                                              style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 30.px),
+                                            ),
+                                          ),
+                                        SizedBox(width: 20.px),
+                                        Container(
+                                          decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(90.px)),
+                                          clipBehavior: Clip.antiAlias,
+                                          child: Image.network(
+                                            chatDetailVM.chatDetail[i].image,
+                                            width: 80.px,
+                                            height: 80.px,
+                                          ),
+                                        ),
+                                        SizedBox(width: 30.px),
+                                      ],
+                                    ),
+                                    SizedBox(
+                                      height: 30.px,
+                                    )
+                                  ],
+                                ),
+                        ],
+                      )
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              width: 750.px,
+              padding: EdgeInsets.fromLTRB(
+                  25.px, 10.px, 20.px, 10.px + Adapt.padBotH),
+              color: Colors.white,
+              child: Row(
+                children: [
+                  GestureDetector(
+                    child: Container(
+                        width: 80.px,
+                        height: 80.px,
+                        decoration: BoxDecoration(
+                            color: Color.fromRGBO(174, 142, 255, 1),
+                            borderRadius: BorderRadius.circular(90.px)),
+                        child: Icon(
+                          Icons.image,
+                          color: Colors.white,
+                        )),
+                    onTap: () {
+                      UI.showActionSheet(context, chatDetailVM.actions, (i) {
+                        chatDetailVM
+                            .selectAssets(context, chatDetailVM.pickMethods[i])
+                            .then((value) {
+                          chatDetailVM.sendImage();
+                        });
+                      });
+                    },
+                  ),
+                  SizedBox(
+                    width: 30.px,
+                  ),
+                  Expanded(
+                      child: Container(
+                        padding: EdgeInsets.fromLTRB(20.px, 25.px, 0, 25.px),
+                    decoration: BoxDecoration(
+                        color: Color.fromRGBO(246, 249, 249, 1),
+                        borderRadius: BorderRadius.circular(40.px)),
+                    child: TextField(
+                      controller: chatDetailVM.textEditingController,
+                      scrollPadding: EdgeInsets.zero,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (data) {
+                        chatDetailVM.send();
+                      },
+                      decoration: InputDecoration(
+                          hintText: "输入新消息",
+                          hintStyle:
+                              TextStyle(color: Colors.black26, fontSize: 30.px),
+                          contentPadding: EdgeInsets.zero,
+                          isDense: true,
+                          border: InputBorder.none),
+                    ),
+                  )),
+                  SizedBox(
+                    width: 30.px,
+                  ),
+                ],
+              ),
+            )
+          ],
+        ),
       ),
     );
   }
